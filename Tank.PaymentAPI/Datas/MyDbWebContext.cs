@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using System.ComponentModel.DataAnnotations.Schema;
 using Tank.PaymentAPI.Models;
 
@@ -17,7 +18,8 @@ namespace Tank.PaymentAPI.Datas
         public virtual DbSet<LogCardModel> LogCards { get; set; }
         public virtual DbSet<ServerListModel> ServerLists { get; set; }
         public virtual DbSet<UserModel> Users { get; set; }
-        public DbSet<MBBankModel> MBBankModels { get; set; }
+        public DbSet<MBBankModel> MBBanks { get; set; }
+        public DbSet<MomoModel> Momos { get; set; }
         public DbSet<ChargeValueModel> ChargeValues { get; set; }
         public DbSet<PaymentCodeModel> PaymentCodes { get; set; }
         #endregion
@@ -42,6 +44,19 @@ namespace Tank.PaymentAPI.Datas
                 e.Property(e => e.GameAmount).IsRequired();
                 e.Property(e => e.BonusRate).HasDefaultValue(0.00);
 
+            });
+
+            modelBuilder.Entity<MomoModel>(e =>
+            {
+                e.ToTable("Log_Momo");
+                e.HasKey(e => e.TranID).HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.None);
+                e.Property(e => e.UserID).IsRequired().HasMaxLength(255);
+                e.Property(e => e.PartnerID).IsRequired().HasMaxLength(15);
+                e.Property(e => e.PartnerName).IsRequired().HasMaxLength(50);
+                e.Property(e => e.Amount).IsRequired().HasDefaultValue(10000);
+                e.Property(e => e.Comment).IsRequired().IsUnicode(true).HasDefaultValue("Nạp game bằng MOMO").HasMaxLength(160);
+                e.Property(e => e.PayTime).HasColumnType("smalldatetime");
+                e.Property(e => e.Checked).HasDefaultValue(false);
             });
 
             modelBuilder.Entity<MBBankModel>(e =>

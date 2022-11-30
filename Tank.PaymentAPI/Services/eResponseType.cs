@@ -1,6 +1,6 @@
 ﻿namespace Tank.PaymentAPI.Services
 {
-    public enum eDatabaseType
+    public enum eResponseType
     {
         SUCCESS = 0,
         SERVER_NOTFOUND = 1,

@@ -10,7 +10,6 @@ using System.Net.WebSockets;
 using System.Threading.Tasks;
 using Tank.PaymentAPI.Datas;
 using Tank.PaymentAPI.Helpers;
-using Tank.PaymentAPI.Interfaces.IModels;
 using Tank.PaymentAPI.Interfaces.IRepository;
 using Tank.PaymentAPI.Models;
 using Tank.PaymentAPI.Services;
@@ -31,17 +30,7 @@ namespace Tank.PaymentAPI.Interfaces
             _appSettings = appMonitor.CurrentValue;
             _tankSetting = tankMonitor.CurrentValue;
         }
-        private DateTime ConvertDateTime(dynamic needConvert)
-        {
-            string[] splitDateTimes = Convert.ToString(needConvert).Split(' ');//0 - date, 1 - time
-            string[] splitDates = splitDateTimes[0].Split('/');
-            string[] splitTimes = splitDateTimes[1].Split(':');
-            string completeString = string.Format("{0}-{1}-{2} {3}", splitDates[2], splitDates[1], splitDates[0], splitDateTimes[1]);
-            DateTime dateTime = new DateTime();
-            DateTime.TryParse(completeString, out dateTime);
-            return dateTime;//DateTime.ParseExact(completeString, "G", CultureInfo.CurrentUICulture.DateTimeFormat);
-
-        }
+       
         private async void LoadHistoryTransaction()
         {
             //decrypt and request httpclient
@@ -60,10 +49,10 @@ namespace Tank.PaymentAPI.Interfaces
                 string cID = transaction.transactionID;//dynamic to string
                 string cType = transaction.type;//OUT = continue
                 int cAmount = Convert.ToInt32(transaction.amount);
-                DateTime cDateTime = ConvertDateTime(transaction.transactionDate);
-                if (_contextWeb.MBBankModels.Any(e => e.TransactionID == cID) || cType == "OUT")//PK check
+                DateTime cDateTime = BaseInterface.ConvertDateTime(transaction.transactionDate);
+                if (_contextWeb.MBBanks.Any(e => e.TransactionID == cID) || cType == "OUT")//PK check
                     continue;
-                await _contextWeb.MBBankModels.AddAsync(new MBBankModel
+                await _contextWeb.MBBanks.AddAsync(new MBBankModel
                 {
                     TransactionID = transaction.transactionID,
                     Amount = cAmount,
@@ -80,29 +69,29 @@ namespace Tank.PaymentAPI.Interfaces
         {
             serverList = _contextWeb.ServerLists.Where(e => e.Id == serverID).SingleOrDefault();
             if (serverList == null)
-                return (int)eDatabaseType.SERVER_NOTFOUND;
+                return (int)eResponseType.SERVER_NOTFOUND;
 
             var paymentCode = _contextWeb.PaymentCodes.Where(e => e.Code == code).SingleOrDefault();
             if (paymentCode == null)
-                return (int)eDatabaseType.PAYMENT_CODE_NOTFOUND;
+                return (int)eResponseType.PAYMENT_CODE_NOTFOUND;
 
             if (paymentCode.EndTime < DateTime.UtcNow)
-                return (int)eDatabaseType.PAYMENT_CODE_EXPIRED;
+                return (int)eResponseType.PAYMENT_CODE_EXPIRED;
 
             //check bank
             LoadHistoryTransaction();
-            var transaction = _contextWeb.MBBankModels.Where(e => e.Description.Contains(code)).SingleOrDefault();
+            var transaction = _contextWeb.MBBanks.Where(e => e.Description.Contains(code)).SingleOrDefault();
             if (transaction == null)
-                return (int)eDatabaseType.TRANSACTION_NOTFOUND;
+                return (int)eResponseType.TRANSACTION_NOTFOUND;
 
             paymentCode.EndTime = DateTime.UtcNow.AddMinutes(-20);
             _contextWeb.SaveChanges();
 
             chargeValue = _contextWeb.ChargeValues.Where(e => e.RealAmount == paymentCode.Amount).SingleOrDefault();
             if (chargeValue == null || chargeValue.GameAmount <= 0)
-                return (int)eDatabaseType.AMOUNT_VALUE_NOTFOUND;
+                return (int)eResponseType.AMOUNT_VALUE_NOTFOUND;
 
-            return (int)eDatabaseType.SUCCESS;
+            return (int)eResponseType.SUCCESS;
         }
         #region Methods
         public async Task<string> GeneratePaymentCode(int amount)
@@ -139,46 +128,7 @@ namespace Tank.PaymentAPI.Interfaces
             await _contextWeb.SaveChangesAsync();
             return string.Format("{0},{1}", paymentCode.Code, paymentCode.EndTime.ToString("dd-MM-yyyy hh:mm:ss"));
         }
-        public List<IMBBankModel> GetAllTransaction()
-        {
-            var transactions = _contextWeb.MBBankModels.Select(e => new IMBBankModel
-            {
-                TransactionID = e.TransactionID,
-                Amount = e.Amount,
-                Description = e.Description,
-                TransactionDate = e.TransactionDate,
-                Checked = e.Checked
-            }).ToList();
-            return transactions.ToList();
-        }
 
-        public IMBBankModel GetSingleTransactionById(string transactionID)
-        {
-            var data = _contextWeb.MBBankModels.SingleOrDefault(e => e.TransactionID == transactionID.Trim());
-            if (data == null)
-                return null;
-            return new IMBBankModel
-            {
-                TransactionID = data.TransactionID,
-                Amount = data.Amount,
-                Description = data.Description,
-                TransactionDate = data.TransactionDate,
-                Checked = data.Checked
-            };
-        }
-
-        public void Update(IMBBankModel transaction)
-        {
-            var data = _contextWeb.MBBankModels.Where(e => e.TransactionID == transaction.TransactionID.Trim()).SingleOrDefault();
-            if (data != null)
-            {
-                data.Amount = transaction.Amount;
-                data.Description = transaction.Description;
-                data.TransactionDate = transaction.TransactionDate;
-                data.Checked = transaction.Checked;
-            }
-            _contextWeb.SaveChanges();
-        }
         public int PaymentState(string userName, string code, int serverID)
         {
             //khai báo
@@ -193,8 +143,8 @@ namespace Tank.PaymentAPI.Interfaces
             int port = 1433;
 
             //check database web
-            eDatabaseType databaseType = (eDatabaseType)CheckDatabase(code, serverID, ref serverList, ref chargeValue);
-            if (databaseType != eDatabaseType.SUCCESS)
+            eResponseType databaseType = (eResponseType)CheckDatabase(code, serverID, ref serverList, ref chargeValue);
+            if (databaseType != eResponseType.SUCCESS)
                 return (int)databaseType;
 
             dataSource = serverList.DataSource;
@@ -214,7 +164,7 @@ namespace Tank.PaymentAPI.Interfaces
                 SysUsersDetailModel userInfo = _contextTank.SysUsersDetails.Where(e => e.UserName == userName).SingleOrDefault<SysUsersDetailModel>();
                 int totalCharge =  _contextTank.ChargeMoneys.Count();
                 if (userInfo == null)
-                    return (int)eDatabaseType.USER_NOTFOUND;
+                    return (int)eResponseType.USER_NOTFOUND;
 
                 string chargeID = string.Format("{0}-{1}-{2}", userInfo.NickName, code, totalCharge);
                 ChargeMoneyModel chargeMoney = new ChargeMoneyModel
@@ -232,11 +182,11 @@ namespace Tank.PaymentAPI.Interfaces
                 _contextTank.SaveChanges();
 
                 BaseInterface.RequestContent(string.Format(serverList.RequestUrl + _appSettings.ChargeMoney_Url, userInfo.UserId, chargeID));
-                return (int)eDatabaseType.SUCCESS;
+                return (int)eResponseType.SUCCESS;
             }
             catch (Exception ex)
             {
-                return (int)eDatabaseType.SYSTEM_ERROR;
+                return (int)eResponseType.SYSTEM_ERROR;
             }
         }
         #endregion
