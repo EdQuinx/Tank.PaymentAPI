@@ -1,0 +1,17 @@
+.suo
+*.suo
+*.dll
+*.pdb
+*.exe
+*.xml
+!logconfig.xml
+!config.logconfig.xml
+.vs
+*.application
+obj
+Fakes
+FakesAssemblies
+logs
+bin
+Migrations
+*.manifest
