@@ -49,14 +49,14 @@ namespace Tank.PaymentAPI.Datas
             modelBuilder.Entity<MomoModel>(e =>
             {
                 e.ToTable("Log_Momo");
-                e.HasKey(e => e.TranID).HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.None);
+                e.HasKey(e => e.TranID);
                 e.Property(e => e.UserID).IsRequired().HasMaxLength(255);
                 e.Property(e => e.PartnerID).IsRequired().HasMaxLength(15);
                 e.Property(e => e.PartnerName).IsRequired().HasMaxLength(50);
                 e.Property(e => e.Amount).IsRequired().HasDefaultValue(10000);
                 e.Property(e => e.Comment).IsRequired().IsUnicode(true).HasDefaultValue("Nạp game bằng MOMO").HasMaxLength(160);
                 e.Property(e => e.PayTime).HasColumnType("smalldatetime");
-                e.Property(e => e.Checked).HasDefaultValue(false);
+                e.Property(e => e.Checked).IsRequired().HasDefaultValue(false);
             });
 
             modelBuilder.Entity<MBBankModel>(e =>

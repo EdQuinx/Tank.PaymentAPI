@@ -48,6 +48,7 @@ namespace Tank.PaymentAPI
 
             services.AddDbContext<MyDbTankContext>();
             services.AddScoped<IMBBankRepository, MBBankRepository>();
+            services.AddScoped<IMomoRepository, MomoRepository>();
 
             var secretKey = Configuration["AppSettings:SecretKey"];
             var secretKeyBytes = Encoding.UTF8.GetBytes(secretKey);
